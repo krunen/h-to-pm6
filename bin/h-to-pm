@@ -21,7 +21,7 @@ sub MAIN($module-name!,$lib-name!,$h-file!,$c-preprocessor='cpp $IN $OUT',$c-com
 
     my $cpp-output = preprocess-file($h-file,$c-preprocessor);
     my $cpp-parse = parse-cpp($cpp-output);
-    die $cpp-parse.perl;
+    #die $cpp-parse.perl;
 
     for $cpp-output.comb(/^^ typedef \s+ [<[\w\*]>+ \s+]* \w+ \s+ \w+ ';'/) {
         if /typedef \s+ ([<[\w\*]>+ \s+]* \w+) \s+ (\w+) / {
@@ -61,7 +61,7 @@ sub MAIN($module-name!,$lib-name!,$h-file!,$c-preprocessor='cpp $IN $OUT',$c-com
 sub preprocess-file($h-file,$c-preprocessor) {
     my ($cpp-out-file) = tempfile(:suffix<.c>);
     my @cpp-command = make-command-from-template($c-preprocessor,{IN=>$h-file,OUT=>$cpp-out-file});
-    #say $*ERR,"Precompiling: {@cpp-command}";
+    say $*ERR,"Precompiling: {@cpp-command}";
     run(@cpp-command) or die;
     my @lines;
     my $source-file = '';
@@ -69,7 +69,7 @@ sub preprocess-file($h-file,$c-preprocessor) {
         # We must only include the lines from the original .h file, not included files
         if $line ~~ /^ '#'/ && $line ~~ / '/' (\w+ '.h') '"'/ { #"
             $source-file = $0;
-        } elsif $source-file eq $h-file.path.basename {
+        } elsif $source-file eq $h-file.IO.basename {
             push @lines, $line;
         }
     }
@@ -165,17 +165,17 @@ grammar PreprocessedCHeader {
     }
 }
 
-sub parse-cpp($cpp-output2) {
-    my $cpp-output = Q[
-extern int wscrl (WINDOW *,int);
-extern int wsetscrreg (WINDOW *,int,int);
-];
-    say($cpp-output);
+sub parse-cpp($cpp-output) {
+#    my $cpp-output = Q[
+#extern int wscrl (WINDOW *,int);
+#extern int wsetscrreg (WINDOW *,int,int);
+#];
+#    say($cpp-output);
     my $m = PreprocessedCHeader.parse($cpp-output);
     for $m<statement>.list -> $s {
         say $s.perl;
     }
-    die;
+#    die;
 }
 
 sub make-command-from-template($tpl is copy,$vars) {
@@ -291,7 +291,7 @@ sub make-type-sect($cpp-output,$types) {
             $struct = $typedef unless $struct;
             my @body;
             for $body.comb(/\s* [\w+ % \s+]+ [\w+ % [',' \s*]] \s* ';'/) {
-                if (/$<type>=([\w+ % \s+]+) $<names>=([\w+ % [',' \s*]]) \s* ';'/) {
+                if (/$<type>=([\w+ % \s+]+) \s+ $<names>=([\w+ % [',' \s*]]) \s* ';'/) {
                     $*ERR.say("attr $/<names> : $/<type>");
                     my $type = $/<type>;
                     @body.push($_ => $type) for $/<names>.split(/',' \s*/);
